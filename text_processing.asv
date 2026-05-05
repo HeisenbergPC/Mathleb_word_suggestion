@@ -1,0 +1,58 @@
+%% --- Implement text preprocessing functions ---
+% Load the raw text
+rawText = fileread('corpus.txt');
+
+% Convert to lowercase
+cleanText = lower(rawText);
+
+% Remove punctuation using Regex
+% This replaces any character that IS NOT a letter, number, or space with nothing
+cleanText = regexprep(cleanText, '[^a-z0-9\s]', '');
+
+% Normalize whitespace (Removes double spaces or newlines)
+cleanText = strtrim(regexprep(cleanText, '\s+', ' '));
+
+% Tokenize: Split the string into a cell array of words
+tokens = split(cleanText);
+
+% Create Vocabulary: Find unique words
+% This is just for displayin
+vocab = unique(tokens);
+% disp(vocab);
+
+%% --- Analyze and visualize basic statistics of your corpus ---
+
+% Convert tokens to categorical for efficient processing
+% This handles the counting of unique instances automatically.
+categoricalTokens = categorical(tokens);
+% disp(categoricalTokens);
+
+% Vocabulary Size
+% This satisfies the requirement to analyze vocabulary size.
+vocabNames = categories(categoricalTokens);
+vocabSize = length(vocabNames);
+fprintf('Total Unique Words (Vocabulary Size): %d\n', vocabSize);
+
+% Word Frequency Distribution
+% Correctly obtain counts (one output argument) and sort them.
+counts = countcats(categoricalTokens);
+[sortedCounts, idx] = sort(counts, 'descend');
+sortedNames = vocabNames(idx);
+
+% Identify Most Common Words
+% Display the top 10 most frequent words in the command window.
+fprintf('\nTop 10 Most Common Words:\n');
+numToDisplay = min(10, length(sortedNames)); 
+for i = 1:numToDisplay
+    fprintf('%d. %s: %d occurrences\n', i, sortedNames{i}, sortedCounts(i));
+end
+
+% Visualization
+% Create the bar chart as required by the assignment.
+figure('Name', 'Corpus Statistics');
+bar(sortedCounts(1:numToDisplay));
+set(gca, 'XTickLabel', sortedNames(1:numToDisplay), 'TickLabelInterpreter', 'none');
+title('Top 10 Most Common Words');
+ylabel('Frequency');
+xlabel('Words');
+grid on;

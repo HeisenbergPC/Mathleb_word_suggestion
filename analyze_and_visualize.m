@@ -1,0 +1,39 @@
+%% --- Analyze and visualize basic statistics of your corpus ---
+
+function analyze_and_visualize(tokens)
+    % Convert tokens to categorical for efficient processing
+    % This handles the counting of unique instances automatically.
+    categoricalTokens = categorical(tokens);
+    % disp(categoricalTokens);
+    
+    % Vocabulary Size
+    % This satisfies the requirement to analyze vocabulary size.
+    vocabNames = categories(categoricalTokens);
+    vocabSize = length(vocabNames);
+    fprintf('Total Unique Words (Vocabulary Size): %d\n', vocabSize);
+    
+    % Word Frequency Distribution
+    % Correctly obtain counts (one output argument) and sort them.
+    counts = countcats(categoricalTokens);
+    [sortedCounts, idx] = sort(counts, 'descend');
+    sortedNames = vocabNames(idx);
+    
+    % Identify Most Common Words
+    % Display the top 10 most frequent words in the command window.
+    fprintf('\nTop 10 Most Common Words:\n');
+    numToDisplay = min(10, length(sortedNames)); 
+    for i = 1:numToDisplay
+        fprintf('%d. %s: %d occurrences\n', i, sortedNames{i}, sortedCounts(i));
+    end
+    
+    % Visualization
+    % Create the bar chart.
+    figure('Name', 'Corpus Statistics');
+    bar(sortedCounts(1:numToDisplay));
+    set(gca, 'XTickLabel', sortedNames(1:numToDisplay), 'TickLabelInterpreter', 'none');
+    title('Top 10 Most Common Words');
+    ylabel('Frequency');
+    xlabel('Words');
+    grid on;
+
+end
