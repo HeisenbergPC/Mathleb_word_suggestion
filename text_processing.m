@@ -16,6 +16,12 @@ function tokens = text_processing(corpus_file)
     
     % Tokenize: Split the string into a cell array of words
     tokens = split(cleanText);
+
+    % --- Extra cleaning step ---
+    % Remove tokens that are only numbers or contain digits
+    % This clears picture numbers, IDs, and mixed alphanumeric junk
+    isBad = cellfun(@(t) ~isempty(regexp(t,'\d','once')), tokens);
+    tokens = tokens(~isBad);
     
     % Create Vocabulary: Find unique words
     % This is just a quick way for showing unique words.
