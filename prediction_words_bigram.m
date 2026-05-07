@@ -1,5 +1,5 @@
 %% --- Predict Next Word ---
-function nextWord = predict_most_likely_word(currentWord, transitionProbs, vocab, word2idx)
+function nextWord = prediction_words_bigram(currentWord, transitionProbs, vocab, word2idx)
 % Implement a function that predicts the most likely next word
     nextWord = ''; % Default return if word is unknown
 

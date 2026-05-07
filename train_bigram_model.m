@@ -1,3 +1,5 @@
+
+
 %% --- Build Bigram Model ---
 function [transitionProbs, vocab, word2idx] = train_bigram_model(tokens)
 % Create Vocabulary: Find unique words

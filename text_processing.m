@@ -14,8 +14,8 @@ function tokens = text_processing(corpus_file)
     % Normalize whitespace (Removes double spaces or newlines)
     cleanText = strtrim(regexprep(cleanText, '\s+', ' '));
     
-    % Tokenize: Split the string into a cell array of words
-    tokens = split(cleanText);
+    % Tokenize: Split the string into a cell array of words or victor
+    tokens = cellstr(split(cleanText));
 
     % --- Extra cleaning step ---
     % Remove tokens that are only numbers or contain digits
