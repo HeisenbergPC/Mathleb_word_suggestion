@@ -60,4 +60,27 @@ compare_predictions(testWords, coMatrix, coVocab, coWord2idx, ...
                     trigramModel, transitionProbs, vocab, word2idx);
 
 
+ %% === PART 4: Model Evaluation ===
+fprintf('\n=== PART 4: Model Evaluation ===\n');
+ 
+% 1: Split corpus into train (80%) and test (20%)
+[trainTokens, testTokens] = split_corpus(tokens);
+ 
+% 2: Retrain models on the TRAINING SET ONLY
+%         (important: models must NOT see test data during training)
+[trainTransitionProbs, trainVocab, trainWord2idx] = train_bigram_model(trainTokens);
+trainTrigramModel = train_trigram_model(trainTokens);
+[trainCoMatrix, trainCoVocab, trainCoWord2idx] = co_occurrence_embeddings(trainTokens);
+ 
+% 3: Evaluate prediction accuracy on the TEST SET
+results = evaluate_accuracy(testTokens, ...
+                            trainTransitionProbs, trainVocab, trainWord2idx, ...
+                            trainTrigramModel, ...
+                            trainCoMatrix, trainCoVocab, trainCoWord2idx);
+ 
+% 4: Measure perplexity of the bigram model on the test set
+perplexity = measure_perplexity(testTokens, trainTransitionProbs, trainVocab, trainWord2idx);
+ 
+% 5: Final comparison table, bar chart, and strengths/weaknesses
+compare_all_models(results, perplexity);
  

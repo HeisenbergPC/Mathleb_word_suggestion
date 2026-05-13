@@ -17,4 +17,11 @@
 9. predict_vector_similar.m
 10. compare_predictions.m
 
+### part 4
+11. split_corpus.m
+12. evaluate_accuracy.m
+13. measure_perplexity.m
+14. compare_all_models.m
+
+
 ## Run in main.m
