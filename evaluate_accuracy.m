@@ -73,13 +73,12 @@ for i = 1:(totalPairs)
             if sum(wordVector) > 0
                 numWords     = length(coVocab);
                 similarities = zeros(1, numWords);
-                for j = 1:numWords
-                    otherVec = coMatrix(j, :);
-                    dA = norm(wordVector);
-                    dB = norm(otherVec);
-                    if dA > 0 && dB > 0
-                        similarities(j) = dot(wordVector, otherVec) / (dA * dB);
-                    end
+                norms = sqrt(sum(coMatrix .^ 2, 2))';   % norm of every word vector at once
+                dA = norm(wordVector);
+                if dA > 0
+                    similarities = (coMatrix * wordVector') ./ (norms * dA)';
+                    similarities = similarities';
+                    similarities(norms == 0) = 0;  % handle zero vectors
                 end
                 similarities(wordIdx) = -1;  % exclude self
                 [~, bestIdx] = max(similarities);

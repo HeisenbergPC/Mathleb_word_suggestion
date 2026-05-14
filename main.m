@@ -84,3 +84,45 @@ perplexity = measure_perplexity(testTokens, trainTransitionProbs, trainVocab, tr
 % 5: Final comparison table, bar chart, and strengths/weaknesses
 compare_all_models(results, perplexity);
  
+%% === PART 5: Application and Documentation ===
+fprintf('\n=== PART 5: Application and Documentation ===\n');
+
+MODEL_FILE = 'trained_models.mat';
+
+% ---------------------------------------------------------------
+% Step 1: Save or Load models
+%
+% The first time you run this, models are trained (Parts 1-4) and
+% then saved. On every run after that, we load from disk instead
+% of retraining — much faster.
+% ---------------------------------------------------------------
+
+if isfile(MODEL_FILE)
+    % Models already saved from a previous run — load them
+    fprintf('Saved models found. Loading from "%s"...\n', MODEL_FILE);
+    [transitionProbs, bigramVocab, bigramWord2idx, ...
+     trigramModel, coMatrix, coVocab, coWord2idx] = load_models(MODEL_FILE);
+else
+    % No saved file yet — use models trained earlier in this run
+    % (transitionProbs, bigramVocab, etc. must already exist in workspace)
+    fprintf('No saved models found. Saving current trained models...\n');
+    save_models(MODEL_FILE, ...
+                transitionProbs, bigramVocab, bigramWord2idx, ...
+                trigramModel, ...
+                coMatrix, coVocab, coWord2idx);
+    fprintf('Models saved to "%s". Next run will load from file.\n', MODEL_FILE);
+end
+
+% ---------------------------------------------------------------
+% Step 2: Launch the Word Prediction UI
+%
+% Opens an interactive window where you can type any word and
+% instantly see predictions from Bigram, Trigram, and Vector models.
+% ---------------------------------------------------------------
+
+fprintf('\nLaunching Word Prediction UI...\n');
+fprintf('(Type a word in the window and click "Predict Next Word")\n');
+
+word_prediction_ui(transitionProbs, bigramVocab, bigramWord2idx, ...
+                   trigramModel, ...
+                   coMatrix, coVocab, coWord2idx);

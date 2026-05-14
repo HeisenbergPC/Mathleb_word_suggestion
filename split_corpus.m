@@ -25,7 +25,7 @@ testIdx = sort(testIdx);
 
 % Use the indices to pull the actual tokens
 trainTokens = tokens(trainIdx);
-testTokens = tokens(testTokens);
+testTokens = tokens(testIdx);
 
 % Print a summary
 fprintf('\n=== Corpus Split ===\n');
