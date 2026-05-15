@@ -31,4 +31,4 @@ testTokens = tokens(testIdx);
 fprintf('\n=== Corpus Split ===\n');
 fprintf('Total tokens : %d\n', totalTokens);
 fprintf('Train tokens : %d (%.0f%%)\n', length(trainTokens), 100*length(trainTokens)/totalTokens);
-fprintf('Test tokens  : %d (%0.f%%)\n', lenght(testTokens), 100*lenght(testTokens)/totalTokens);
+fprintf('Test tokens  : %d (%0.f%%)\n', length(testTokens), 100*length(testTokens)/totalTokens);
