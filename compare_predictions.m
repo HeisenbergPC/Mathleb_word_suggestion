@@ -1,5 +1,5 @@
 function compare_predictions(testWords, coMatrix, coVocab, coWord2idx, ...
-                              trigramModel, transitionProbs, bigramVocab, bigramWord2idx)
+                              ~, transitionProbs, bigramVocab, bigramWord2idx)
 % Compares vector similarity prediction vs n-gram prediction (bigram model)
 
     fprintf('\n========================================\n');

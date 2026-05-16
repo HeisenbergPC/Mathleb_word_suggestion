@@ -7,7 +7,7 @@
 
 ### part 2
 3. train_bigram_model.m
-4. train_trigram_model.m
+4. train_trigram_model.m (me added this you can delete if u want)
 5. prediction_words_bigram.m 
 6. prediction_words_trigram.m ( i added this file you can remove it if you want)
 

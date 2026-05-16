@@ -59,6 +59,3 @@ fprintf('Vector prediction after "%s": %s\n', simWord, vecNextWord);
 testWords = {'i', 'am', 'the', 'she', 'not'};
 compare_predictions(testWords, coMatrix, coVocab, coWord2idx, ...
                     trigramModel, transitionProbs, vocab, word2idx);
-
-
- 

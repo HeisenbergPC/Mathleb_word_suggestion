@@ -15,7 +15,7 @@ function [coMatrix, vocab, word2idx] = co_occurrence_embeddings(tokens)
     windowSize = 1;
     fprintf('Building co-occurrence matrix (window=%d)...\n', windowSize);
 
-    % Loop through tokens
+    % Loop through tokens and learn 
     for i = 1:length(tokens)
         currentWord = tokens{i};
         currentIdx = word2idx(currentWord);

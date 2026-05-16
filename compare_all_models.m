@@ -27,9 +27,13 @@ function compare_all_models(results, perplexity)
     fprintf('╠══════════════════════════════════════════════════════╣\n');
     fprintf('║ Bigram Perplexity : %-32.2f║\n', perplexity);
     fprintf('╚══════════════════════════════════════════════════════╝\n');
-
+    
+    accuracies = [results.bigramAcc, results.trigramAcc, results.vectorAcc];
+    labels     = {'Bigram', 'Trigram', 'Vector Similarity'};
+    figure('Name', "Model comparison");
     bar(accuracies, 0.5, 'FaceColor', [0.2 0.5 0.8]);
     set(gca, 'XTickLabel', labels);
+
     title('Prediction Accuracy by Model (%)');
     ylabel('Accuracy (%)');
     xlabel('Model');

@@ -4,7 +4,6 @@ function analyze_and_visualize(tokens)
     % Convert tokens to categorical for efficient processing
     % This handles the counting of unique instances automatically.
     categoricalTokens = categorical(tokens);
-    % disp(categoricalTokens);
     
     % Vocabulary Size
     % This satisfies the requirement to analyze vocabulary size.
@@ -12,7 +11,7 @@ function analyze_and_visualize(tokens)
     vocabSize = length(vocabNames);
     fprintf('Total Unique Words (Vocabulary Size): %d\n', vocabSize);
     
-    % Word Frequency Distribution
+    % Word Frequency Distribution (count how many words appear)
     % Correctly obtain counts (one output argument) and sort them.
     counts = countcats(categoricalTokens);
     [sortedCounts, idx] = sort(counts, 'descend');
