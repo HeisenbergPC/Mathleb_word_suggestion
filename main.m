@@ -68,15 +68,29 @@ fprintf('\n=== PART 4: Model Evaluation ===\n');
 EVAL_FILE = 'trained_models.mat';
 
 if isfile(EVAL_FILE)
-    fprintf('Loading cached eval models from "%s"... \n',EVAL_FILE);
-    load(EVAL_FILE);
-    fprintf('Done. Skipping retraining. \n');
+    fprintf('Loading cached eval models from "%s"...\n', EVAL_FILE);
+    d = load(EVAL_FILE);
+
+    testTokens           = d.testTokens;
+    trainTransitionProbs = d.trainTransitionProbs;
+    trainVocab           = d.trainVocab;
+    trainWord2idx        = d.trainWord2idx;
+    trainTrigramModel    = d.trainTrigramModel;
+    trainCoMatrix        = d.trainCoMatrix;
+    trainCoVocab         = d.trainCoVocab;
+    trainCoWord2idx      = d.trainCoWord2idx;
+
+    % Load results and perplexity directly — no re-evaluation needed
+    results    = d.results;
+    perplexity = d.perplexity;
+
+    fprintf('Done. Skipping retraining and re-evaluation.\n');
+
 else
     fprintf('No cache found.\n');
-    % Split corpus
+
     [trainTokens, testTokens] = split_corpus(tokens);
 
-    % Train on 80% only
     fprintf('Training bigram...\n');
     [trainTransitionProbs, trainVocab, trainWord2idx] = train_bigram_model(trainTokens);
 
@@ -86,29 +100,33 @@ else
     fprintf('Building co-occurrence matrix...\n');
     [trainCoMatrix, trainCoVocab, trainCoWord2idx] = co_occurrence_embeddings(trainTokens);
 
-    % Save everything 
-    fprintf('Saving everything "%s"...\n', EVAL_FILE);
-    save(EVAL_FILE, '-v7.3', ...
-         'trainTokens', 'testTokens', ...
-         'trainTransitionProbs', 'trainVocab', 'trainWord2idx', ...
-         'trainTrigramModel', ...
-         'trainCoMatrix', 'trainCoVocab', 'trainCoWord2idx');
-    fprintf('Saved. Next run will load instantly.\n');
-     % 4: Evaluate accuracy on TEST SET
-    results = evaluate_accuracy(testTokens, ...
-                           trainTransitionProbs, trainVocab, trainWord2idx, ...
-                           trainTrigramModel, ...
-                           trainCoMatrix, trainCoVocab, trainCoWord2idx);
-    
-    % 5: Measure perplexity
-    perplexity = measure_perplexity(testTokens, trainTransitionProbs, ...
-                             trainVocab, trainWord2idx);
-    
-    % 6: Final comparison
-    compare_all_models(results, perplexity);
+    % Evaluate once
+    results    = evaluate_accuracy(testTokens, ...
+                                   trainTransitionProbs, trainVocab, trainWord2idx, ...
+                                   trainTrigramModel, ...
+                                   trainCoMatrix, trainCoVocab, trainCoWord2idx);
 
-   
+    perplexity = measure_perplexity(testTokens, trainTransitionProbs, ...
+                                    trainVocab, trainWord2idx);
+
+    % Save everything including results and perplexity
+    fprintf('Saving everything to "%s"...\n', EVAL_FILE);
+    d.testTokens           = testTokens;
+    d.trainTransitionProbs = trainTransitionProbs;
+    d.trainVocab           = trainVocab;
+    d.trainWord2idx        = trainWord2idx;
+    d.trainTrigramModel    = trainTrigramModel;
+    d.trainCoMatrix        = trainCoMatrix;
+    d.trainCoVocab         = trainCoVocab;
+    d.trainCoWord2idx      = trainCoWord2idx;
+    d.results              = results;      % ← save results
+    d.perplexity           = perplexity;   % ← save perplexity
+    save(EVAL_FILE, '-struct', 'd');
+    fprintf('Saved. Next run will load instantly.\n');
 end
+
+% Always show the comparison (fast — just printing)
+compare_all_models(results, perplexity);
 
 
 
