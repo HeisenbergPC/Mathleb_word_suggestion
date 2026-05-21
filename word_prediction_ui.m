@@ -1,187 +1,280 @@
-%% --- Word Prediction UI ---
+%% --- Word Prediction UI (Keyboard Style) ---
 %
-% PURPOSE:
-%   Launches a simple interactive window where the user can type a word
-%   (or two words for trigram) and see predictions from all three models
-%   side by side in real time.
+% Simulates a real mobile keyboard word predictor.
+% A polling timer checks every 0.3s if the text changed.
+% When text stops changing for 0.6s, 3 word suggestions pop up.
+% Click a suggestion to append it to your sentence.
 %
-% HOW TO USE:
-%   After training or loading your models, call:
-%       word_prediction_ui(transitionProbs, bigramVocab, bigramWord2idx, ...
-%                          trigramModel, coMatrix, coVocab, coWord2idx)
-%
-% REQUIRES: MATLAB R2016a or later (uses uifigure)
+% Usage:
+%   word_prediction_ui(transitionProbs, bigramVocab, bigramWord2idx, ...
+%                      trigramModel, coMatrix, coVocab, coWord2idx)
 
 function word_prediction_ui(transitionProbs, bigramVocab, bigramWord2idx, ...
                              trigramModel, ...
                              coMatrix, coVocab, coWord2idx)
-    %% --- Build the Window ---
-    fig = uifigure('Name', 'Word Prediction Demo', ...
-                   'Position', [200 150 520 420], ...
-                   'Resize', 'off');
 
-    % Title label
+    %% ── Shared state ──────────────────────────────────────────────────────
+    lastSeenText   = '';
+    lastChangeTime = 0;
+    predictionDone = true;
+
+    %% ── Window ────────────────────────────────────────────────────────────
+    fig = uifigure('Name', 'Word Prediction', ...
+                   'Position', [150 150 540 400], ...
+                   'Color',    [0.11 0.11 0.13], ...
+                   'Resize',   'off');
+
+    %% ── Title ────────────────────────────────────────────────────────────
     uilabel(fig, ...
-        'Text', 'Word Prediction Model — Demo', ...
-        'Position', [20 380 480 30], ...
-        'FontSize', 16, ...
-        'FontWeight', 'bold', ...
-        'HorizontalAlignment', 'center');
+        'Text',                'Next Word Prediction', ...
+        'Position',            [0 360 540 32], ...
+        'FontSize',            18, ...
+        'FontWeight',          'bold', ...
+        'FontColor',           [0.95 0.95 1.0], ...
+        'HorizontalAlignment', 'center', ...
+        'BackgroundColor',     [0.11 0.11 0.13]);
 
-    % ---- Input: Word 1 ----
-    uilabel(fig, 'Text', 'Enter Word 1:', ...
-        'Position', [20 330 120 22], 'FontSize', 12);
+    %% ── Text area ────────────────────────────────────────────────────────
+    inputBox = uitextarea(fig, ...
+        'Position',        [20 195 500 155], ...
+        'FontSize',        16, ...
+        'FontColor',       [0.95 0.95 1.0], ...
+        'BackgroundColor', [0.18 0.18 0.22], ...
+        'Editable',        true);
 
-    word1Field = uieditfield(fig, 'text', ...
-        'Position', [150 330 160 28], ...
-        'FontSize', 13, ...
-        'Placeholder', 'e.g.  the');
+    %% ── Suggestion chips (3 word buttons, no labels) ─────────────────────
+    chipW   = 155;
+    chipGap = 10;
+    chipY   = 148;
+    totalW  = 3*chipW + 2*chipGap;
+    startX  = (540 - totalW) / 2;
 
-    % ---- Input: Word 2 (for trigram) ----
-    uilabel(fig, 'Text', 'Enter Word 2:', ...
-        'Position', [20 290 120 22], 'FontSize', 12);
+    chipBtns = gobjects(1, 3);
+    for k = 1:3
+        xPos = startX + (k-1)*(chipW + chipGap);
+        chipBtns(k) = uibutton(fig, 'push', ...
+            'Text',            '', ...
+            'Position',        [xPos chipY chipW 36], ...
+            'FontSize',        14, ...
+            'FontWeight',      'bold', ...
+            'FontColor',       [0.95 0.95 1.0], ...
+            'BackgroundColor', [0.22 0.22 0.28], ...
+            'Visible',         'off', ...
+            'ButtonPushedFcn', @(b,~) appendWord(b.Text));
+    end
 
-    word2Field = uieditfield(fig, 'text', ...
-        'Position', [150 290 160 28], ...
-        'FontSize', 13, ...
-        'Placeholder', 'e.g.  cat  (trigram only)');
-
-    % Note about word 2
+    %% ── Divider line above chips ─────────────────────────────────────────
+    % Simulated with a thin label acting as a separator
     uilabel(fig, ...
-        'Text', '* Word 2 is only used by the Trigram model', ...
-        'Position', [150 265 340 20], ...
-        'FontSize', 10, ...
-        'FontColor', [0.5 0.5 0.5]);
+        'Text',            '', ...
+        'Position',        [20 143 500 2], ...
+        'BackgroundColor', [0.28 0.28 0.35]);
 
-    % ---- Predict Button ----
-    predictBtn = uibutton(fig, 'push', ...
-        'Text', 'Predict Next Word', ...
-        'Position', [150 225 180 34], ...
-        'FontSize', 13, ...
-        'FontWeight', 'bold', ...
-        'BackgroundColor', [0.2 0.5 0.8], ...
-        'FontColor', 'white', ...
-        'ButtonPushedFcn', @(btn, event) runPrediction());
+    %% ── Status label ─────────────────────────────────────────────────────
+    statusLbl = uilabel(fig, ...
+        'Text',                'Start typing...', ...
+        'Position',            [0 110 540 24], ...
+        'FontSize',            10, ...
+        'FontColor',           [0.4 0.4 0.5], ...
+        'HorizontalAlignment', 'center', ...
+        'BackgroundColor',     [0.11 0.11 0.13]);
 
-    % ---- Results Panel ----
-    uilabel(fig, 'Text', 'Results:', ...
-        'Position', [20 185 80 22], 'FontSize', 12, 'FontWeight', 'bold');
-
-    % Three result boxes
-    uilabel(fig, 'Text', 'Bigram:', ...
-        'Position', [20 155 80 22], 'FontSize', 11);
-    bigramResult = uilabel(fig, ...
-        'Text', '—', ...
-        'Position', [110 155 380 22], ...
-        'FontSize', 11, ...
-        'FontColor', [0.1 0.4 0.7], ...
-        'FontWeight', 'bold');
-
-    uilabel(fig, 'Text', 'Trigram:', ...
-        'Position', [20 120 80 22], 'FontSize', 11);
-    trigramResult = uilabel(fig, ...
-        'Text', '—', ...
-        'Position', [110 120 380 22], ...
-        'FontSize', 11, ...
-        'FontColor', [0.1 0.6 0.3], ...
-        'FontWeight', 'bold');
-
-    uilabel(fig, 'Text', 'Vector:', ...
-        'Position', [20 85 80 22], 'FontSize', 11);
-    vectorResult = uilabel(fig, ...
-        'Text', '—', ...
-        'Position', [110 85 380 22], ...
-        'FontSize', 11, ...
-        'FontColor', [0.6 0.2 0.6], ...
-        'FontWeight', 'bold');
-
-    % ---- Status bar ----
-    statusLabel = uilabel(fig, ...
-        'Text', 'Ready. Type a word and click Predict.', ...
-        'Position', [20 40 480 22], ...
-        'FontSize', 10, ...
-        'FontColor', [0.4 0.4 0.4], ...
-        'HorizontalAlignment', 'center');
-
-    % ---- Clear Button ----
+    %% ── Clear button ─────────────────────────────────────────────────────
     uibutton(fig, 'push', ...
-        'Text', 'Clear', ...
-        'Position', [360 225 80 34], ...
-        'FontSize', 12, ...
-        'ButtonPushedFcn', @(btn, event) clearFields());
+        'Text',            'Clear', ...
+        'Position',        [20 60 80 30], ...
+        'FontSize',        11, ...
+        'FontColor',       [1 1 1], ...
+        'BackgroundColor', [0.35 0.15 0.15], ...
+        'ButtonPushedFcn', @(~,~) clearAll());
 
-    %% --- Prediction Logic (nested function) ---
-    function runPrediction()
+    %% ── Typing indicator dot ─────────────────────────────────────────────
+    typingDot = uilabel(fig, ...
+        'Text',            '●', ...
+        'Position',        [118 60 20 30], ...
+        'FontSize',        14, ...
+        'FontColor',       [0.25 0.25 0.3], ...
+        'BackgroundColor', [0.11 0.11 0.13]);
 
-        w1 = strtrim(lower(word1Field.Value));
-        w2 = strtrim(lower(word2Field.Value));
+    %% ── Polling timer ────────────────────────────────────────────────────
+    pollTimer = timer( ...
+        'ExecutionMode', 'fixedRate', ...
+        'Period',        0.3, ...
+        'TimerFcn',      @(~,~) pollText());
 
-        if isempty(w1)
-            statusLabel.Text = 'Please enter at least Word 1.';
-            statusLabel.FontColor = [0.8 0.2 0.2];
-            return;
-        end
+    fig.CloseRequestFcn = @(~,~) cleanupAndClose();
+    start(pollTimer);
 
-        statusLabel.Text = sprintf('Predicting for: "%s"...', w1);
-        statusLabel.FontColor = [0.4 0.4 0.4];
+    %% ════════════════════════════════════════════════════════════════════
+    %  POLL — runs every 0.3s
+    %% ════════════════════════════════════════════════════════════════════
+    function pollText()
+        if ~isvalid(fig), return; end
 
-        % -- Bigram prediction --
-        bPred = predict_bigram(w1);
-        bigramResult.Text = bPred;
+        currentText = strtrim(strjoin(inputBox.Value, ' '));
 
-        % -- Trigram prediction --
-        if ~isempty(w2)
-            tPred = predict_trigram(w1, w2);
-        else
-            tPred = '(enter Word 2 for trigram prediction)';
-        end
-        trigramResult.Text = tPred;
+        if ~strcmp(currentText, lastSeenText)
+            lastSeenText   = currentText;
+            lastChangeTime = tic;
+            predictionDone = false;
 
-        % -- Vector similarity prediction --
-        vPred = predict_vector_similar(w1, coMatrix, coVocab, coWord2idx);
-        if isempty(vPred)
-            vPred = 'Word not in vocabulary';
-        end
-        vectorResult.Text = vPred;
+            typingDot.FontColor = [0.3 0.75 0.45];
+            hideChips();
 
-        statusLabel.Text = sprintf('Done! Predictions for "%s"', w1);
-        statusLabel.FontColor = [0.1 0.5 0.1];
-    end
-
-    function clearFields()
-        word1Field.Value  = '';
-        word2Field.Value  = '';
-        bigramResult.Text  = '—';
-        trigramResult.Text = '—';
-        vectorResult.Text  = '—';
-        statusLabel.Text   = 'Ready. Type a word and click Predict.';
-        statusLabel.FontColor = [0.4 0.4 0.4];
-    end
-
-    %% --- Bigram helper ---
-    function nextWord = predict_bigram(word)
-        nextWord = 'Word not in vocabulary';
-        if isKey(bigramWord2idx, word)
-            idx   = bigramWord2idx(word);
-            probs = transitionProbs(idx, :);
-            if nnz(probs) > 0
-                [~, maxIdx] = max(probs);
-                nextWord = bigramVocab{maxIdx};
+        elseif ~predictionDone && lastChangeTime ~= 0
+            if toc(lastChangeTime) >= 0.6
+                predictionDone      = true;
+                typingDot.FontColor = [0.25 0.25 0.3];
+                runPrediction(currentText);
             end
         end
     end
 
-    %% --- Trigram helper ---
-    function nextWord = predict_trigram(w1, w2)
-        nextWord = 'Word pair not in vocabulary';
+    %% ════════════════════════════════════════════════════════════════════
+    %  PREDICTION
+    %% ════════════════════════════════════════════════════════════════════
+    function runPrediction(currentText)
+        raw   = lower(currentText);
+        words = strsplit(raw);
+        words = words(~cellfun(@isempty, words));
+
+        if isempty(words)
+            hideChips();
+            statusLbl.Text = 'Start typing...';
+            return;
+        end
+
+        if length(words) >= 2
+            w1 = words{end-1};
+            w2 = words{end};
+        else
+            w1 = '';
+            w2 = words{end};
+        end
+
+        % Get one prediction from each model
+        bPred = getBigramPred(w2);
+        tPred = getTrigramPred(w1, w2);
+        vPred = getVectorPred(w2);
+
+        % Deduplicate — show unique words only, fill blanks with '—'
+        allPreds = {bPred, tPred, vPred};
+        seen     = {};
+        final    = {'', '', ''};
+        slot     = 1;
+
+        for j = 1:3
+            w = allPreds{j};
+            if ~isempty(w) && ~ismember(w, seen)
+                final{slot} = w;
+                seen{end+1} = w; %#ok<AGROW>
+                slot = slot + 1;
+                if slot > 3, break; end
+            end
+        end
+
+        % Show chips
+        anyShown = false;
+        for j = 1:3
+            if ~isempty(final{j})
+                chipBtns(j).Text    = final{j};
+                chipBtns(j).Visible = 'on';
+                anyShown = true;
+            else
+                chipBtns(j).Visible = 'off';
+            end
+        end
+
+        if anyShown
+            statusLbl.Text      = sprintf('Suggestions for "%s"', w2);
+            statusLbl.FontColor = [0.35 0.7 0.45];
+        else
+            statusLbl.Text      = sprintf('No predictions found for "%s"', w2);
+            statusLbl.FontColor = [0.5 0.4 0.4];
+        end
+    end
+
+    %% ════════════════════════════════════════════════════════════════════
+    %  APPEND WORD
+    %% ════════════════════════════════════════════════════════════════════
+    function appendWord(word)
+        if isempty(word), return; end
+
+        current = strtrim(strjoin(inputBox.Value, ' '));
+        if isempty(current)
+            newText = word;
+        else
+            newText = [current, ' ', word];
+        end
+
+        inputBox.Value = {newText};
+        lastSeenText   = newText;
+        lastChangeTime = tic;
+        predictionDone = false;
+
+        % Predict immediately after tap
+        predictionDone = true;
+        runPrediction(newText);
+    end
+
+    %% ════════════════════════════════════════════════════════════════════
+    %  HELPERS
+    %% ════════════════════════════════════════════════════════════════════
+    function hideChips()
+        for j = 1:3
+            chipBtns(j).Visible = 'off';
+        end
+    end
+
+    function clearAll()
+        inputBox.Value      = {''};
+        lastSeenText        = '';
+        lastChangeTime      = 0;
+        predictionDone      = true;
+        typingDot.FontColor = [0.25 0.25 0.3];
+        statusLbl.Text      = 'Start typing...';
+        statusLbl.FontColor = [0.4 0.4 0.5];
+        hideChips();
+    end
+
+    function cleanupAndClose()
+        if strcmp(pollTimer.Running, 'on')
+            stop(pollTimer);
+        end
+        delete(pollTimer);
+        delete(fig);
+    end
+
+    %% ════════════════════════════════════════════════════════════════════
+    %  MODEL HELPERS
+    %% ════════════════════════════════════════════════════════════════════
+    function nw = getBigramPred(word)
+        nw = '';
+        if isKey(bigramWord2idx, word)
+            idx   = bigramWord2idx(word);
+            probs = transitionProbs(idx, :);
+            if nnz(probs) > 0
+                [~, mi] = max(probs);
+                nw = bigramVocab{mi};
+            end
+        end
+    end
+
+    function nw = getTrigramPred(w1, w2)
+        nw = '';
+        if isempty(w1), return; end
         key = strcat(w1, ' ', w2);
         if isKey(trigramModel, key)
-            innerMap = trigramModel(key);
-            wds   = keys(innerMap);
-            cnts  = cell2mat(values(innerMap));
-            [~, idx] = max(cnts);
-            nextWord = wds{idx};
+            inner     = trigramModel(key);
+            wds       = keys(inner);
+            cnts      = cell2mat(values(inner));
+            [~, best] = max(cnts);
+            nw        = wds{best};
         end
+    end
+
+    function nw = getVectorPred(word)
+        nw = predict_vector_similar(word, coMatrix, coVocab, coWord2idx);
     end
 
 end

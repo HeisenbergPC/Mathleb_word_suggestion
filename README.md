@@ -25,3 +25,20 @@
 
 
 ## Run in main.m
+
+the flow is: 
+    - we need a clean text ( in part 1 ) convert it into tokens.
+    - train_bigram and trigram. then, test these two prediction.
+      in part 2
+    - create a vector model: one_hot_encode + co_occurrence.
+      then test one_hot + co_occurrence and predict_vector
+      then compare_prediction between n-gram vs vector
+    - split copus into training and testing (80 + 20): take 80% of tokens
+      and 20 % of token. So train on trigram + bigram + vector again (80%)
+      and save into trained_models.mat and load (if run for two times and more)
+    - part 5: ui for prediction. (not yet done)
+
+
+
+
+             

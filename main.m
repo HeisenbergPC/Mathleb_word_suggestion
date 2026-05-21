@@ -64,66 +64,57 @@ compare_predictions(testWords, coMatrix, coVocab, coWord2idx, ...
 
 %% === PART 4: Model Evaluation ===
 fprintf('\n=== PART 4: Model Evaluation ===\n');
+EVAL_FILE = 'trained_models.mat';
 
-% 1: Split corpus into train (80%) and test (20%)
-[trainTokens, testTokens] = split_corpus(tokens);
+if isfile(EVAL_FILE)
+    fprintf('Loading cached eval models from "%s"... \n',EVAL_FILE);
+    load(EVAL_FILE);
+    fprintf('Done. Skipping retraining. \n');
+else
+    fprintf('No cache found.\n');
+    % Split corpus
+    [trainTokens, testTokens] = split_corpus(tokens);
 
-% 2: Retrain models on TRAINING SET ONLY
-[trainTransitionProbs, trainVocab, trainWord2idx] = train_bigram_model(trainTokens);
-trainTrigramModel = train_trigram_model(trainTokens);
-[trainCoMatrix, trainCoVocab, trainCoWord2idx] = co_occurrence_embeddings(trainTokens);
+    % Train on 80% only
+    fprintf('Training bigram...\n');
+    [trainTransitionProbs, trainVocab, trainWord2idx] = train_bigram_model(trainTokens);
 
-% 4: Evaluate accuracy on TEST SET
-results = evaluate_accuracy(testTokens, ...
-                            trainTransitionProbs, trainVocab, trainWord2idx, ...
-                            trainTrigramModel, ...
-                            trainCoMatrix, trainCoVocab, trainCoWord2idx);
+    fprintf('Training trigram...\n');
+    trainTrigramModel = train_trigram_model(trainTokens);
 
-% 5: Measure perplexity
-perplexity = measure_perplexity(testTokens, trainTransitionProbs, ...
-                                trainVocab, trainWord2idx);
+    fprintf('Building co-occurrence matrix...\n');
+    [trainCoMatrix, trainCoVocab, trainCoWord2idx] = co_occurrence_embeddings(trainTokens);
 
-% 6: Final comparison
-compare_all_models(results, perplexity);
+    % Save everything 
+    fprintf('Saving everything "%s"...\n', EVAL_FILE);
+    save(EVAL_FILE, '-v7.3', ...
+         'trainTokens', 'testTokens', ...
+         'trainTransitionProbs', 'trainVocab', 'trainWord2idx', ...
+         'trainTrigramModel', ...
+         'trainCoMatrix', 'trainCoVocab', 'trainCoWord2idx');
+    fprintf('Saved. Next run will load instantly.\n');
+     % 4: Evaluate accuracy on TEST SET
+    results = evaluate_accuracy(testTokens, ...
+                           trainTransitionProbs, trainVocab, trainWord2idx, ...
+                           trainTrigramModel, ...
+                           trainCoMatrix, trainCoVocab, trainCoWord2idx);
+    
+    % 5: Measure perplexity
+    perplexity = measure_perplexity(testTokens, trainTransitionProbs, ...
+                             trainVocab, trainWord2idx);
+    
+    % 6: Final comparison
+    compare_all_models(results, perplexity);
+
+   
+end
 
 
 
  
 %% === PART 5: Application and Documentation ===
 fprintf('\n=== PART 5: Application and Documentation ===\n');
-
-MODEL_FILE = 'trained_models.mat';
-
-% ---------------------------------------------------------------
-% Step 1: Save or Load models
-%
-% The first time you run this, models are trained (Parts 1-4) and
-% then saved. On every run after that, we load from disk instead
-% of retraining — much faster.
-% ---------------------------------------------------------------
-
-if isfile(MODEL_FILE)
-    % Models already saved from a previous run — load them
-    fprintf('Saved models found. Loading from "%s"...\n', MODEL_FILE);
-    [transitionProbs, bigramVocab, bigramWord2idx, ...
-     trigramModel, coMatrix, coVocab, coWord2idx] = load_models(MODEL_FILE);
-else
-    % No saved file yet — use models trained earlier in this run
-    % (transitionProbs, bigramVocab, etc. must already exist in workspace)
-    fprintf('No saved models found. Saving current trained models...\n');
-    save_models(MODEL_FILE, ...
-                transitionProbs, bigramVocab, bigramWord2idx, ...
-                trigramModel, ...
-                coMatrix, coVocab, coWord2idx);
-    fprintf('Models saved to "%s". Next run will load from file.\n', MODEL_FILE);
-end
-
-% ---------------------------------------------------------------
-% Step 2: Launch the Word Prediction UI
-%
-% Opens an interactive window where you can type any word and
-% instantly see predictions from Bigram, Trigram, and Vector models.
-% ---------------------------------------------------------------
+%  the ui
 
 fprintf('\nLaunching Word Prediction UI...\n');
 fprintf('(Type a word in the window and click "Predict Next Word")\n');
