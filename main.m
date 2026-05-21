@@ -3,10 +3,11 @@
 % Make sure all function files are in the same directory
 % this 
 %% === PART 1 and 2: text processing, training and prediction
-fprintf("part 1 and part 2: ");
+fprintf("part 1 and part 2: \n");
 % 1. Load corpus and preprocess
 corpus_file = 'corpus.txt';
 tokens = text_processing(corpus_file);
+analyze_and_visualize(tokens);
  
 % 2. Train the bigram model
 [transitionProbs, vocab, word2idx] = train_bigram_model(tokens);
